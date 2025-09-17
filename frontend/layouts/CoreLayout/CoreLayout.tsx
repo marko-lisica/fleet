@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
 import { InjectedRouter } from "react-router";
+import { Command } from "cmdk";
 
 import UnsupportedScreenSize from "layouts/UnsupportedScreenSize";
 
@@ -25,6 +26,43 @@ interface ICoreLayoutProps {
     query: QueryParams;
   };
 }
+
+const CommandMenu = () => {
+  const [open, setOpen] = React.useState(false);
+
+  // Toggle the menu when ⌘K is pressed
+  React.useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen((prevOpen) => !prevOpen);
+      }
+    };
+
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
+
+  return (
+    <Command.Dialog
+      open={open}
+      onOpenChange={setOpen}
+      label="Global Command Menu"
+    >
+      <Command.Input />
+      <Command.List>
+        <Command.Empty>No results found.</Command.Empty>
+        <Command.Group heading="Letters">
+          <Command.Item>a</Command.Item>
+          <Command.Item>b</Command.Item>
+          <Command.Separator />
+          <Command.Item>c</Command.Item>
+        </Command.Group>
+        <Command.Item>Apple</Command.Item>
+      </Command.List>
+    </Command.Dialog>
+  );
+};
 
 const CoreLayout = ({ children, router, location }: ICoreLayoutProps) => {
   const { config, currentUser } = useContext(AppContext);
@@ -65,6 +103,7 @@ const CoreLayout = ({ children, router, location }: ICoreLayoutProps) => {
 
   return (
     <div className="app-wrap">
+      <CommandMenu />
       <UnsupportedScreenSize />
       <nav className="site-nav-container">
         <SiteTopNav
