@@ -27,7 +27,7 @@ interface ICoreLayoutProps {
   };
 }
 
-const CommandMenu = () => {
+const CommandMenu = ({ router }: { router: InjectedRouter }) => {
   const [open, setOpen] = React.useState(false);
 
   // Toggle the menu when ⌘K is pressed
@@ -44,21 +44,74 @@ const CommandMenu = () => {
   }, []);
 
   return (
-    <Command.Dialog
-      open={open}
-      onOpenChange={setOpen}
-      label="Global Command Menu"
-    >
-      <Command.Input />
+    <Command.Dialog open={open} onOpenChange={setOpen} label="Command Pallete">
+      <div className="pallete-search">
+        <Command.Input placeholder="Type a command or search..." />
+        <button className="pallete-esc-button" onClick={() => setOpen(false)}>
+          Esc
+        </button>
+      </div>
       <Command.List>
         <Command.Empty>No results found.</Command.Empty>
-        <Command.Group heading="Letters">
-          <Command.Item>a</Command.Item>
-          <Command.Item>b</Command.Item>
-          <Command.Separator />
-          <Command.Item>c</Command.Item>
+        <Command.Group heading="Pages">
+          <Command.Item
+            onSelect={() => {
+              router.push(paths.MANAGE_HOSTS);
+              setOpen(false);
+            }}
+          >
+            <span>
+              Go to <b>Hosts</b>
+            </span>
+          </Command.Item>
+          <Command.Item
+            onSelect={() => {
+              router.push(paths.CONTROLS);
+              setOpen(false);
+            }}
+          >
+            <span>
+              Go to <b>Controls</b>
+            </span>
+          </Command.Item>
+          <Command.Item
+            onSelect={() => {
+              router.push(paths.SOFTWARE);
+              setOpen(false);
+            }}
+          >
+            <span>
+              Go to <b>Software</b>
+            </span>
+          </Command.Item>
+          <Command.Item
+            onSelect={() => {
+              router.push(paths.MANAGE_QUERIES);
+              setOpen(false);
+            }}
+          >
+            <span>
+              Go to <b>Queries</b>
+            </span>
+          </Command.Item>
+          <Command.Item
+            onSelect={() => {
+              router.push(paths.MANAGE_POLICIES);
+              setOpen(false);
+            }}
+          >
+            <span>
+              Go to <b>Policies</b>
+            </span>
+          </Command.Item>
         </Command.Group>
-        <Command.Item>Apple</Command.Item>
+        <Command.Group heading="Search">
+          <Command.Item>
+            <span>
+              Search <b>Hosts</b>
+            </span>
+          </Command.Item>
+        </Command.Group>
       </Command.List>
     </Command.Dialog>
   );
@@ -103,7 +156,7 @@ const CoreLayout = ({ children, router, location }: ICoreLayoutProps) => {
 
   return (
     <div className="app-wrap">
-      <CommandMenu />
+      <CommandMenu router={router} />
       <UnsupportedScreenSize />
       <nav className="site-nav-container">
         <SiteTopNav
