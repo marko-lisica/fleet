@@ -19,7 +19,6 @@ import (
 	"github.com/fleetdm/fleet/v4/server/contexts/license"
 	"github.com/fleetdm/fleet/v4/server/contexts/logging"
 	"github.com/fleetdm/fleet/v4/server/fleet"
-	"github.com/fleetdm/fleet/v4/server/mdm/android"
 	"github.com/fleetdm/fleet/v4/server/service/middleware/authzcheck"
 	"github.com/fleetdm/fleet/v4/server/service/middleware/ratelimit"
 	"github.com/go-kit/kit/endpoint"
@@ -186,7 +185,7 @@ func DecodeQueryTagValue(r *http.Request, fp fieldPair) error {
 			if optional {
 				return nil
 			}
-			return &fleet.BadRequestError{Message: fmt.Sprintf("Param %s is required", fp.Sf.Name)}
+			return &fleet.BadRequestError{Message: fmt.Sprintf("Param %s is required", queryTagValue)}
 		}
 		field := fp.V
 		if field.Kind() == reflect.Ptr {
@@ -316,7 +315,10 @@ func (h *ErrorHandler) Handle(ctx context.Context, err error) {
 	var rle ratelimit.Error
 	if errors.As(err, &rle) {
 		res := rle.Result()
-		logger.Log("err", "limit exceeded", "retry_after", res.RetryAfter)
+		if res.RetryAfter > 0 {
+			logger = log.With(logger, "retry_after", res.RetryAfter)
+		}
+		logger.Log("err", "limit exceeded")
 	} else {
 		logger.Log("err", err)
 	}
@@ -506,23 +508,18 @@ func WriteBrowserSecurityHeaders(w http.ResponseWriter) {
 	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 }
 
-type HandlerFunc func(ctx context.Context, request interface{}, svc fleet.Service) (fleet.Errorer, error)
+type CommonEndpointer[H any] struct {
+	EP             Endpointer[H]
+	MakeDecoderFn  func(iface interface{}) kithttp.DecodeRequestFunc
+	EncodeFn       kithttp.EncodeResponseFunc
+	Opts           []kithttp.ServerOption
+	AuthMiddleware endpoint.Middleware
+	Router         *mux.Router
+	Versions       []string
 
-type AndroidFunc func(ctx context.Context, request interface{}, svc android.Service) fleet.Errorer
-
-type CommonEndpointer[H HandlerFunc | AndroidFunc] struct {
-	EP            Endpointer[H]
-	MakeDecoderFn func(iface interface{}) kithttp.DecodeRequestFunc
-	EncodeFn      kithttp.EncodeResponseFunc
-	Opts          []kithttp.ServerOption
-	AuthFunc      func(svc fleet.Service, next endpoint.Endpoint) endpoint.Endpoint
-	FleetService  fleet.Service
-	Router        *mux.Router
-	Versions      []string
-
-	// CustomMiddleware are middlewares that run before AuthFunc.
+	// CustomMiddleware are middlewares that run before AuthMiddleware.
 	CustomMiddleware []endpoint.Middleware
-	// CustomMiddlewareAfterAuth are middlewares that run after AuthFunc.
+	// CustomMiddlewareAfterAuth are middlewares that run after AuthMiddleware.
 	CustomMiddlewareAfterAuth []endpoint.Middleware
 
 	startingAtVersion string
@@ -531,7 +528,7 @@ type CommonEndpointer[H HandlerFunc | AndroidFunc] struct {
 	usePathPrefix     bool
 }
 
-type Endpointer[H HandlerFunc | AndroidFunc] interface {
+type Endpointer[H any] interface {
 	CallHandlerFunc(f H, ctx context.Context, request interface{}, svc interface{}) (fleet.Errorer, error)
 	Service() interface{}
 }
@@ -579,7 +576,11 @@ func (e *CommonEndpointer[H]) makeEndpoint(f H, v interface{}) http.Handler {
 			endp = mw(endp)
 		}
 	}
-	endp = e.AuthFunc(e.FleetService, endp)
+	if e.AuthMiddleware == nil {
+		// This panic catches potential security issues during development.
+		panic("AuthMiddleware must be set on CommonEndpointer")
+	}
+	endp = e.AuthMiddleware(endp)
 
 	// Apply "before auth" middleware (in reverse order so that the first wraps
 	// the second wraps the third etc.)
@@ -623,6 +624,12 @@ func (e *CommonEndpointer[H]) WithAltPaths(paths ...string) *CommonEndpointer[H]
 func (e *CommonEndpointer[H]) WithCustomMiddleware(mws ...endpoint.Middleware) *CommonEndpointer[H] {
 	ae := *e
 	ae.CustomMiddleware = mws
+	return &ae
+}
+
+func (e *CommonEndpointer[H]) AppendCustomMiddleware(mws ...endpoint.Middleware) *CommonEndpointer[H] {
+	ae := *e
+	ae.CustomMiddleware = append(ae.CustomMiddleware, mws...)
 	return &ae
 }
 

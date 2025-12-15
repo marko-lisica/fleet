@@ -504,7 +504,7 @@ func (ds *Datastore) UpdateScriptContents(ctx context.Context, scriptID uint, sc
 		// Update the script to point to the new content
 		if newContentID != oldContentID {
 			updateStmt := `
-				UPDATE scripts 
+				UPDATE scripts
 				SET script_content_id = ?
 				WHERE id = ?
 			`
@@ -638,8 +638,8 @@ func (ds *Datastore) cleanupScriptContent(ctx context.Context, tx sqlx.ExtContex
 			UNION ALL
 			SELECT 1 FROM setup_experience_scripts WHERE script_content_id = ?
 			UNION ALL
-			SELECT 1 FROM software_installers WHERE 
-				install_script_content_id = ? 
+			SELECT 1 FROM software_installers WHERE
+				install_script_content_id = ?
 				OR uninstall_script_content_id = ?
 				OR post_install_script_content_id = ?
 			UNION ALL
@@ -992,9 +992,9 @@ WITH all_latest_activities AS (
 			canceled = 0
 	) completed_ranked
 	WHERE row_num = 1
-	
+
 	UNION ALL
-	
+
 	-- latest from upcoming_activities
 	SELECT * FROM (
 		SELECT
@@ -1035,7 +1035,7 @@ FROM
 				*,
 				ROW_NUMBER() OVER (
 					PARTITION BY script_id
-					ORDER BY 
+					ORDER BY
 						CASE WHEN source = 'upcoming' THEN 1 ELSE 2 END,  -- Prefer upcoming over completed
 						created_at DESC,
 						id DESC
@@ -1412,10 +1412,13 @@ func (ds *Datastore) GetHostLockWipeStatus(ctx context.Context, host *fleet.Host
 
 	switch fleetPlatform {
 	case "darwin", "ios", "ipados":
-		if mdmActions.UnlockPIN != nil {
+		if mdmActions.UnlockPIN != nil && fleetPlatform == "darwin" {
+			// Unlock PIN is only available for macOS hosts
 			status.UnlockPIN = *mdmActions.UnlockPIN
 		}
-		if mdmActions.UnlockRef != nil {
+		if mdmActions.UnlockRef != nil && fleetPlatform == "darwin" {
+			// the unlock reference is a timestamp
+			// (we only store the timestamp for macOS unlocks)
 			var err error
 			status.UnlockRequestedAt, err = time.Parse(time.DateTime, *mdmActions.UnlockRef)
 			if err != nil {
@@ -1425,6 +1428,14 @@ func (ds *Datastore) GetHostLockWipeStatus(ctx context.Context, host *fleet.Host
 				// directly in the DB and messes up the format).
 				status.UnlockRequestedAt = time.Now().UTC()
 			}
+		} else if mdmActions.UnlockRef != nil && fleetPlatform != "darwin" {
+			// the unlock reference is an MDM command uuid
+			cmd, cmdRes, err := ds.getHostMDMAppleCommand(ctx, *mdmActions.UnlockRef, host.UUID)
+			if err != nil {
+				return nil, ctxerr.Wrap(ctx, err, "get unlock reference")
+			}
+			status.UnlockMDMCommand = cmd
+			status.UnlockMDMCommandResult = cmdRes
 		}
 
 		if mdmActions.LockRef != nil {
@@ -1493,10 +1504,9 @@ func (ds *Datastore) getHostMDMWindowsCommand(ctx context.Context, cmdUUID, host
 		return nil, nil, ctxerr.Wrap(ctx, err, "get Windows MDM command")
 	}
 
-	// get the MDM command result, which may be not found (indicating the command
-	// is pending). Note that it doesn't return ErrNoRows if not found, it
-	// returns success and an empty cmdRes slice.
-	cmdResults, err := ds.GetMDMWindowsCommandResults(ctx, cmdUUID)
+	// get the MDM command result, which may be not found (indicating the command doesn't exist).
+	// If it is pending, then it returns 101, and result will be empty.
+	cmdResults, err := ds.GetMDMWindowsCommandResults(ctx, cmdUUID, "")
 	if err != nil {
 		return nil, nil, ctxerr.Wrap(ctx, err, "get Windows MDM command result")
 	}
@@ -1509,6 +1519,12 @@ func (ds *Datastore) getHostMDMWindowsCommand(ctx context.Context, cmdUUID, host
 		if r.HostUUID != hostUUID {
 			continue
 		}
+
+		if r.Status == "101" || string(r.Result) == "" {
+			// command is still pending
+			continue
+		}
+
 		// all statuses for Windows indicate end of processing of the command
 		// (there is no equivalent of "NotNow" or "Idle" as for Apple).
 		cmdRes = r
@@ -1526,17 +1542,16 @@ func (ds *Datastore) getHostMDMAppleCommand(ctx context.Context, cmdUUID, hostUU
 	// get the MDM command result, which may be not found (indicating the command
 	// is pending). Note that it doesn't return ErrNoRows if not found, it
 	// returns success and an empty cmdRes slice.
-	cmdResults, err := ds.GetMDMAppleCommandResults(ctx, cmdUUID)
+	cmdResults, err := ds.GetMDMAppleCommandResults(ctx, cmdUUID, hostUUID)
 	if err != nil {
 		return nil, nil, ctxerr.Wrap(ctx, err, "get Apple MDM command result")
 	}
 
-	// each item in the slice returned by GetMDMAppleCommandResults is
-	// potentially a result for a different host, we need to find the one for
-	// that specific host.
+	// filter by result status to preserve old behavior of this method where it doesn't return pending results.
 	var cmdRes *fleet.MDMCommandResult
 	for _, r := range cmdResults {
 		if r.HostUUID != hostUUID {
+			// this should never happen because we already filter by hostUUID, but just in case
 			continue
 		}
 		if r.Status == fleet.MDMAppleStatusAcknowledged || r.Status == fleet.MDMAppleStatusError || r.Status == fleet.MDMAppleStatusCommandFormatError {
@@ -1775,6 +1790,10 @@ func (ds *Datastore) UpdateHostLockWipeStatusFromAppleMDMResult(ctx context.Cont
 	case "DeviceLock":
 		refCol = "lock_ref"
 		setUnlockRef = true
+	case "EnableLostMode":
+		refCol = "lock_ref"
+	case "DisableLostMode":
+		refCol = "unlock_ref"
 	default:
 		return nil
 	}
@@ -2277,7 +2296,7 @@ SELECT
 	COUNT(*) as num_targeted,
 	COUNT(bsehr.error) as num_did_not_run,
 	COUNT(CASE WHEN hsr.exit_code = 0 THEN 1 END) as num_succeeded,
-	COUNT(CASE WHEN hsr.exit_code > 0 THEN 1 END) as num_failed,
+	COUNT(CASE WHEN hsr.exit_code <> 0 THEN 1 END) as num_failed,
 	COUNT(CASE WHEN hsr.canceled = 1 AND hsr.exit_code IS NULL THEN 1 END) as num_cancelled
 FROM
 	batch_activity_host_results bsehr
@@ -2372,13 +2391,13 @@ FROM (
     COUNT(bahr.host_id)                     AS num_targeted,
     COUNT(bahr.error)                       AS num_incompatible,
     COUNT(IF(hsr.exit_code = 0, 1, NULL))   AS num_ran,
-    COUNT(IF(hsr.exit_code > 0, 1, NULL))   AS num_errored,
+    COUNT(IF(hsr.exit_code <> 0, 1, NULL))   AS num_errored,
     COUNT(IF((hsr.canceled = 1 AND hsr.exit_code IS NULL) OR (hsr.host_id IS NULL AND bahr.error is NULL AND ba.canceled = 1), 1, NULL)) AS num_cancelled,
     (
       COUNT(bahr.host_id)
       - COUNT(bahr.error)
       - COUNT(IF(hsr.exit_code = 0, 1, NULL))
-      - COUNT(IF(hsr.exit_code > 0, 1, NULL))
+      - COUNT(IF(hsr.exit_code <> 0, 1, NULL))
       - COUNT(IF((hsr.canceled = 1 AND hsr.exit_code IS NULL) OR (hsr.host_id IS NULL AND bahr.error is NULL AND ba.canceled = 1), 1, NULL))
     ) AS num_pending,
     ba.execution_id,
@@ -2392,7 +2411,7 @@ FROM (
     ba.created_at                           AS created_at,
     j.not_before                            AS not_before,
     ba.id                                   AS id
-  FROM batch_activities ba 
+  FROM batch_activities ba
   LEFT JOIN batch_activity_host_results bahr
          ON ba.execution_id = bahr.batch_execution_id
   LEFT JOIN host_script_results hsr
@@ -2405,12 +2424,13 @@ FROM (
   GROUP BY ba.id
 ) AS u
 ORDER BY
-  u.not_before ASC, u.created_at DESC, u.id DESC
+  %s
 LIMIT %d OFFSET %d
 	`
 	limit := 10
 	offset := 0
 	args := []any{}
+	orderBy := []string{"u.created_at DESC", "u.id DESC"}
 	whereClauses := make([]string, 0, 2)
 	// If an execution ID is provided, use it to filter the results.
 	if filter.ExecutionID != nil && *filter.ExecutionID != "" {
@@ -2421,6 +2441,16 @@ LIMIT %d OFFSET %d
 		if filter.Status != nil && *filter.Status != "" {
 			whereClauses = append(whereClauses, "ba.status = ?")
 			args = append(args, *filter.Status)
+			switch *filter.Status {
+			case string(fleet.ScheduledBatchExecutionScheduled):
+				orderBy = append([]string{"u.not_before ASC"}, orderBy...)
+			case string(fleet.ScheduledBatchExecutionStarted):
+				orderBy = append([]string{"u.started_at DESC"}, orderBy...)
+			case string(fleet.ScheduledBatchExecutionFinished):
+				orderBy = append([]string{"u.finished_at DESC"}, orderBy...)
+			default:
+				// no additional ordering
+			}
 		}
 		if filter.TeamID != nil {
 			whereClauses = append(whereClauses, "s.global_or_team_id = ?")
@@ -2439,8 +2469,7 @@ LIMIT %d OFFSET %d
 		offset = int(*filter.Offset) //nolint:gosec // dismiss G115
 	}
 	where := strings.Join(whereClauses, " AND ")
-	stmtExecutions = fmt.Sprintf(stmtExecutions, where, where, limit, offset)
-
+	stmtExecutions = fmt.Sprintf(stmtExecutions, where, where, strings.Join(orderBy, ", "), limit, offset)
 	var summary []fleet.BatchActivity
 	if err := sqlx.SelectContext(ctx, ds.reader(ctx), &summary, stmtExecutions, args...); err != nil {
 		return nil, ctxerr.Wrap(ctx, err, "selecting execution information for bulk execution summary")
@@ -2491,7 +2520,7 @@ JOIN (
     COUNT(bahr.host_id)                                        AS num_targeted,
     COUNT(bahr.error)                                          AS num_incompatible,
     COUNT(IF(hsr.exit_code = 0, 1, NULL))                      AS num_ran,
-    COUNT(IF(hsr.exit_code > 0, 1, NULL))                      AS num_errored,
+    COUNT(IF(hsr.exit_code <> 0, 1, NULL))                     AS num_errored,
 	COUNT(IF((hsr.canceled = 1 AND hsr.exit_code IS NULL) OR (hsr.host_id IS NULL AND bahr.error is NULL AND ba2.canceled = 1), 1, NULL)) AS num_canceled
   FROM batch_activities AS ba2
   LEFT JOIN batch_activity_host_results AS bahr

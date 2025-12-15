@@ -5,13 +5,13 @@ import { IStringCellProps } from "interfaces/datatable_config";
 import { IHostMdmData } from "interfaces/host";
 import {
   FLEET_FILEVAULT_PROFILE_DISPLAY_NAME,
-  // FLEET_FILEVAULT_PROFILE_IDENTIFIER,
   IHostMdmProfile,
-  MdmDDMProfileStatus,
-  MdmProfileStatus,
   isLinuxDiskEncryptionStatus,
   isWindowsDiskEncryptionStatus,
+  MdmDDMProfileStatus,
+  MdmProfileStatus,
 } from "interfaces/mdm";
+import { isDDMProfile } from "services/entities/mdm";
 
 import OSSettingsNameCell from "./OSSettingsNameCell";
 import OSSettingStatusCell from "./OSSettingStatusCell";
@@ -40,9 +40,9 @@ export type OsSettingsTableStatusValue =
   | INonDDMProfileStatus;
 
 const generateTableConfig = (
-  hostId: number,
   canResendProfiles: boolean,
-  onProfileResent?: () => void
+  resendRequest: (profileUUID: string) => Promise<void>,
+  onProfileResent: () => void
 ): ITableColumnConfig[] => {
   return [
     {
@@ -70,6 +70,7 @@ const generateTableConfig = (
             operationType={cellProps.row.original.operation_type}
             profileName={cellProps.row.original.name}
             hostPlatform={cellProps.row.original.platform}
+            profileUUID={cellProps.row.original.profile_uuid}
           />
         );
       },
@@ -79,18 +80,20 @@ const generateTableConfig = (
       disableSortBy: true,
       accessor: "detail",
       Cell: (cellProps: ITableStringCellProps) => {
-        const { name, platform, status } = cellProps.row.original;
-        const isFailedWindowsDiskEncryption =
-          platform === "windows" &&
-          name === "Disk encryption" &&
-          status === "failed";
+        const { platform } = cellProps.row.original;
+
+        const isMacOSMobileConfigProfile =
+          platform === "darwin" && !isDDMProfile(cellProps.row.original);
+        const isWindowsProfile = platform === "windows";
+
         return (
           <OSSettingsErrorCell
             canResendProfiles={
-              canResendProfiles && !isFailedWindowsDiskEncryption
+              canResendProfiles &&
+              (isWindowsProfile || isMacOSMobileConfigProfile)
             }
-            hostId={hostId}
             profile={cellProps.row.original}
+            resendRequest={resendRequest}
             onProfileResent={onProfileResent}
           />
         );
@@ -186,8 +189,8 @@ export const generateTableData = (
     case "rhel":
       return makeLinuxRows(hostMDMData);
     case "ios":
-      return hostMDMData.profiles;
     case "ipados":
+    case "android":
       return hostMDMData.profiles;
     default:
       return null;

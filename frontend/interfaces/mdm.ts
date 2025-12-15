@@ -49,6 +49,7 @@ export type MdmEnrollmentStatus =
   | "On (manual)"
   | "On (automatic)"
   | "On (personal)"
+  | "On (company-owned)"
   | "Off"
   | "Pending";
 
@@ -94,6 +95,10 @@ export const MDM_ENROLLMENT_STATUS_UI_MAP: Record<
     displayName: "Pending",
     filterValue: "pending",
   },
+  "On (company-owned)": {
+    displayName: "On (company-owned)",
+    filterValue: "automatic",
+  },
 };
 
 export interface IMdmStatusCardData {
@@ -137,7 +142,13 @@ export interface IMdmSummaryResponse {
   mobile_device_management_solution: IMdmSummaryMdmSolution[] | null;
 }
 
-export type ProfilePlatform = "darwin" | "windows" | "ios" | "ipados" | "linux";
+export type ProfilePlatform =
+  | "darwin"
+  | "windows"
+  | "ios"
+  | "ipados"
+  | "linux"
+  | "android";
 
 export interface IProfileLabel {
   name: string;
@@ -222,6 +233,8 @@ export const isLinuxDiskEncryptionStatus = (
   ["verified", "failed", "action_required"].includes(status);
 
 export const FLEET_FILEVAULT_PROFILE_DISPLAY_NAME = "Disk encryption";
+export const FLEET_ANDROID_CERTIFICATE_TEMPLATE_PROFILE_ID =
+  "fleet-host-certificate-template";
 
 export interface IMdmSSOReponse {
   url: string;
@@ -255,7 +268,7 @@ export interface IMdmCommandResult {
   host_uuid: string;
   command_uuid: string;
   /** Status is the status of the command. It can be one of Acknowledged, Error, or NotNow for
-	// Apple, or 200, 400, etc for Windows.  */
+  // Apple, or 200, 400, etc for Windows.  */
   status: string;
   updated_at: string;
   request_type: string;
@@ -272,14 +285,36 @@ export const isEnrolledInMdm = (
   if (!hostMdmEnrollmentStatus) {
     return false;
   }
-  return ["On (automatic)", "On (manual)", "On (personal)"].includes(
-    hostMdmEnrollmentStatus
-  );
+  return [
+    "On (automatic)",
+    "On (manual)",
+    "On (personal)",
+    "On (company-owned)",
+  ].includes(hostMdmEnrollmentStatus);
 };
 
-/** determines if the host enrolled in mdm is a personal device */
-export const isPersonalEnrollmentInMdm = (
+export const isBYODManualEnrollment = (
+  enrollmentStatus: MdmEnrollmentStatus | null
+) => {
+  return enrollmentStatus === "On (manual)";
+};
+
+/** This checks if the device is enrolled via an Apple ID user enrollment.
+ * We refer to that as "account driven user enrollment" */
+export const isBYODAccountDrivenUserEnrollment = (
   enrollmentStatus: MdmEnrollmentStatus | null
 ) => {
   return enrollmentStatus === "On (personal)";
+};
+
+/** This check is the device is enrolled via Automated Device Enrollment (ADE, also known as DEP)
+ * This was previously known as automatic enrollment but was updatd to company owned. Here we check
+ * for both to current and legacy enrollment status */
+export const isAutomaticDeviceEnrollment = (
+  enrollmentStatus: MdmEnrollmentStatus | null
+) => {
+  return (
+    enrollmentStatus === "On (company-owned)" ||
+    enrollmentStatus === "On (automatic)"
+  );
 };

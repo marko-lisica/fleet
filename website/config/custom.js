@@ -165,6 +165,7 @@ module.exports.custom = {
 
     // 🫧 Pricing and features
     'handbook/company/pricing-features-table.yml': 'noahtalerman',
+    'handbook/company/product-maturity-assessment': 'allenhouchins',
     'handbook/company/testimonials.yml': 'mike-j-thomas',
 
     // Dev process
@@ -183,14 +184,14 @@ module.exports.custom = {
     '.gitignore': 'sampfluger88',// « what files should not be checked in?
 
     // 🌐 Handbook
-    //'handbook': 'samfp', Covered in CODEOWNERS (#16972 2024-02-19)
+    //'handbook': 'sampfluger88', Covered in CODEOWNERS (#16972 2024-02-19)
 
 
     // 🌐 GitHub issue templates
     '.github/ISSUE_TEMPLATE': 'sampfluger88',
 
     // 💝 Fleet-maintained apps
-    'ee/maintained-apps/inputs': 'mostlikelee',
+    'ee/maintained-apps/inputs': 'allenhouchins',
   },
 
   // FUTURE: Support DRIs for confidential and other repos (except see other note above about a consolidated way to do it, to reduce these 4-6 config keys into one)
@@ -235,7 +236,7 @@ module.exports.custom = {
 
     // Website (fleetdm.com)
     'website': ['mikermcneil', 'eashaw'],// (default for website)
-    'website/views': ['eashaw', 'mike-j-thomas'],
+    'website/views': ['eashaw', 'mike-j-thomas', 'johnjeremiah', 'akuthiala'],
     'website/generators': 'eashaw',
     'website/assets': 'eashaw',
     'website/package.json': 'eashaw',
@@ -251,6 +252,11 @@ module.exports.custom = {
 
     // 🫧 Bulk operations dashboard
     'ee/bulk-operations-dashboard': 'eashaw',
+
+    // FMA and icons
+    'frontend/pages/SoftwarePage/components/icons': 'allenhouchins',
+    'ee/maintained-apps': 'allenhouchins',
+    'website/assets/images': 'allenhouchins',
 
     // Other brandfronts
     'README.md': ['mikermcneil', 'mike-j-thomas', 'lukeheath'],//« github brandfront (github.com/fleetdm/fleet)
@@ -277,10 +283,11 @@ module.exports.custom = {
     // Handbook
     'handbook/README.md': 'mikermcneil', // See https://github.com/fleetdm/fleet/pull/13195
     'handbook/company': 'mikermcneil',
-    'handbook/company/open-positions.yml': ['sampfluger88', 'mikermcneil'],
-    'handbook/company/communications.md': ['sampfluger88', 'mikermcneil'],
+    'handbook/company/product-maturity-assessment': ['mikermcneil','noahtalerman','allenhouchins'],
+    'handbook/company/open-positions.yml': ['sampfluger88', 'mikermcneil', 'ireedy'],
+    'handbook/company/communications.md': ['sampfluger88', 'mikermcneil', 'ireedy'],
     'handbook/company/go-to-market-groups.md': ['sampfluger88', 'mikermcneil'],
-    'handbook/company/leadership.md': ['sampfluger88', 'mikermcneil'],
+    'handbook/company/leadership.md': ['sampfluger88', 'mikermcneil', 'ireedy'],
     'handbook/it-and-enablement': ['sampfluger88', 'mikermcneil'],
     'handbook/finance': ['sampfluger88', 'mikermcneil'],
     'handbook/sales': ['sampfluger88', 'mikermcneil'],
@@ -334,7 +341,7 @@ module.exports.custom = {
   //
   // The version of osquery to use when generating schema docs
   // (both in Fleet's query console and on fleetdm.com)
-  versionOfOsquerySchemaToUseWhenGeneratingDocumentation: '5.19.0',
+  versionOfOsquerySchemaToUseWhenGeneratingDocumentation: '5.20.0',
 
 
   //  ███╗   ███╗██╗███████╗ ██████╗
@@ -383,21 +390,35 @@ module.exports.custom = {
     'yandex.ru',       'ymail.com',    'zoho.com',         'zonnet.nl'
   ],
 
-  // For website signups & contact form submissions:
+  // For website signups & "Talk to us" form submissions:
   bannedEmailDomainsForWebsiteSubmissions: [
+    'example.com',
     'gmail.com',
+    'hotmail.ca',
+    'hotmail.co.uk',
+    'hotmail.com',
+    'icloud.com',
+    'live.com',
+    'mac.com',
+    'mail.com',
+    'mail.ru',
+    'me.com',
+    'msn.com',
+    'outlook.com',
+    'proton.com',
+    'proton.me',
+    'protonmail.com',
+    'qq.com',
     'yahoo.com',
     'yahoo.co.uk',
-    'hotmail.com',
-    'hotmail.co.uk',
-    'hotmail.ca',
-    'outlook.com',
-    'icloud.com',
-    'proton.me',
-    'live.com',
     'yandex.ru',
-    'ymail.com',
-    'qq.com',
+    'ymail.com'
+  ],
+
+  // For contact form submissions.
+  // Note: We're using a separate list for the contact form because we previously allowed signups/license dispenser purchases with a personal email address.
+  bannedEmailDomainsForContactFormSubmissions: [
+    'example.com'
   ],
 
   /***************************************************************************
@@ -409,10 +430,14 @@ module.exports.custom = {
     projects: {
       orchestration: 71,
       mdm: 58,
-      software: 70
+      software: 70,
+      'security-compliance': 97
     },
     excludeWeekends: true
   },
+
+  // Docsearch search-only public key.
+  algoliaPublicKey: 'f3c02b646222734376a5e94408d6fead',// [?]: https://docsearch.algolia.com/docs/legacy/faq/#can-i-share-the-apikey-in-my-repo
 
   // Zapier:
   // zapierWebhookSecret: '…',
@@ -445,6 +470,12 @@ module.exports.custom = {
   // Deal registration form
   // dealRegistrationContactEmailAddress: '…',
 
+  // Render instance trials
+  // renderOwnerId: '…',
+  // renderApiToken: '…',
+  // renderInstancePoolSize: 10,
+  // renderInstanceSesSecretId: '…',
+  // renderInstanceSesSecretKey: '…',
 
   // Microsoft compliance proxy
   // compliancePartnerClientId: '…',

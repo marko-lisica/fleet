@@ -3,7 +3,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import FileSaver from "file-saver";
 import classnames from "classnames";
 
-import { IMdmProfile } from "interfaces/mdm";
+import { IMdmProfile, ProfilePlatform } from "interfaces/mdm";
 import { isAppleDevice } from "interfaces/platform";
 import mdmAPI, { isDDMProfile } from "services/entities/mdm";
 
@@ -29,7 +29,7 @@ const LabelCount = ({
 );
 
 interface IProfileDetailsProps {
-  platform: string;
+  platform: ProfilePlatform;
   uploadedAt: string;
   isDDM?: boolean;
 }
@@ -40,8 +40,18 @@ const ProfileDetails = ({
   isDDM,
 }: IProfileDetailsProps) => {
   const getPlatformName = () => {
-    if (platform === "windows") return "Windows";
-    return isDDM ? "macOS, iOS, iPadOS (declaration)" : "macOS, iOS, iPadOS";
+    switch (platform) {
+      case "windows":
+        return "Windows";
+      case "android":
+        return "Android";
+      case "linux":
+        return "Linux";
+      default:
+        return isDDM
+          ? "macOS, iOS, iPadOS (declaration)"
+          : "macOS, iOS, iPadOS";
+    }
   };
 
   return (
@@ -59,12 +69,18 @@ const createProfileExtension = (profile: IMdmProfile) => {
   if (isDDMProfile(profile)) {
     return "json";
   }
+  if (profile.platform === "android") {
+    return "json";
+  }
   return isAppleDevice(profile.platform) ? "mobileconfig" : "xml";
 };
 
 const createFileContent = async (profile: IMdmProfile) => {
   const content = await mdmAPI.downloadProfile(profile.profile_uuid);
   if (isDDMProfile(profile)) {
+    return JSON.stringify(content, null, 2);
+  }
+  if (profile.platform === "android") {
     return JSON.stringify(content, null, 2);
   }
   return content;
@@ -142,15 +158,15 @@ const ProfileListItem = ({
         <div className={`${subClass}__actions`}>
           <Button
             className={`${subClass}__action-button`}
-            variant="text-icon"
+            variant="icon"
             onClick={() => onClickInfo(profile)}
           >
-            <Icon name="info" color="ui-fleet-black-75" size="medium" />
+            <Icon name="info" size="medium" />
           </Button>
           {isPremium && labels !== undefined && labels.length && (
             <Button
               className={`${subClass}__action-button`}
-              variant="text-icon"
+              variant="icon"
               onClick={() => setProfileLabelsModalData({ ...profile })}
             >
               <Icon name="filter" />
@@ -158,7 +174,7 @@ const ProfileListItem = ({
           )}
           <Button
             className={`${subClass}__action-button`}
-            variant="text-icon"
+            variant="icon"
             onClick={onClickDownload}
           >
             <Icon name="download" />
@@ -168,10 +184,10 @@ const ProfileListItem = ({
               <Button
                 disabled={disableChildren}
                 className={`${subClass}__action-button`}
-                variant="text-icon"
+                variant="icon"
                 onClick={() => onClickDelete(profile)}
               >
-                <Icon name="trash" color="ui-fleet-black-75" />
+                <Icon name="trash" />
               </Button>
             )}
           />

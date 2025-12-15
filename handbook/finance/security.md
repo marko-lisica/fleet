@@ -870,7 +870,7 @@ Please also see [privacy](https://fleetdm.com/legal/privacy)
 
 ## Other questions
 
-Other commonly asked questions of Fleet can be found in our [SIG Lite](https://docs.google.com/spreadsheets/d/1XiGv_M6w2pcfe9zWp-Q9ssXi2A-vnTgs/edit?usp=sharing&ouid=113668214024041155485&rtpof=true&sd=true) or in [recently answered questionnaires](https://drive.google.com/drive/folders/1lP_YX7lGWOofjOISdTd15gJax_pn0cjY?usp=drive_link).  Other information sometimes asked about includes [customer support SLAs](https://fleetdm.com/handbook/company/go-to-market-groups#customer-support-service-level-agreements-slas) and [release testing](https://fleetdm.com/handbook/company/product-groups#release-testing). Technical information can often be found in [Fleet docs](https://fleetdm.com/docs/get-started/why-fleet). 
+Other commonly asked questions of Fleet can be found in our [SIG Lite](https://docs.google.com/spreadsheets/d/1XiGv_M6w2pcfe9zWp-Q9ssXi2A-vnTgs/edit?usp=sharing&ouid=113668214024041155485&rtpof=true&sd=true) or in [recently answered questionnaires](https://drive.google.com/drive/folders/1lP_YX7lGWOofjOISdTd15gJax_pn0cjY?usp=drive_link).  Other information sometimes asked about includes [customer support SLOs](https://fleetdm.com/handbook/company/go-to-market-groups#customer-support-service-level-objectives-slos) and [release testing](https://fleetdm.com/handbook/company/product-groups#release-testing). Technical information can often be found in [Fleet docs](https://fleetdm.com/docs/get-started/why-fleet). 
 
 ## Security policies
 
@@ -896,6 +896,32 @@ These systems are to be used for business purposes, serving the interests of the
 Effective security is a team effort. This involves the participation and support of every Fleet Device Management Inc employee or contractor who deals with information and/or information systems. It is every team member's responsibility to read and understand this policy so they know how to conduct their activities accordingly.
 
 All Fleet employees and long-term collaborators are expected to read and electronically sign the *acceptable use of end-user computing* policy. They should also be aware of the others and consult them as needed. This is to make sure systems built and used are done in a compliant manner.
+
+
+### Acceptable use of cloud computing policy
+
+| Policy owner   | Effective date |
+| -------------- | -------------- |
+| @lukeheath       | 2025-10-01   |
+
+
+This policy applies to all users of the company's cloud computing resources, including employees, contractors, vendors, and partners with access to the cloud services.
+- All cloud environments owned and operated by the company, including "Infrastructure-as-a-Service" (IaaS), "Platform-as-a-Service" (PaaS), and "Software-as-a-Service" (SaaS) deployed or managed by the company are governed by this policy.
+- Fleet's cloud resources must only be used for legitimate business purposes approved by the company.
+- Users must access company-owned cloud systems only with company-managed accounts and approved identity methods.
+- Company data must only be stored in the company’s cloud environments that have been security-reviewed and approved by the Information Security team.
+- Personal use of company-provisioned cloud services is prohibited.
+- Unauthorized sharing, downloading, or uploading of the company intellectual property to non-company cloud accounts is strictly forbidden.
+
+
+#### Prohibited Activities
+
+Users must not use the company's cloud resources to:
+- Attempt to disable, bypass, or interfere with cloud security controls.
+- Deploy workloads that violate the company policies or applicable laws (e.g., cryptocurrency mining, illegal content).
+- Conduct personal business, personal profit activities, or malicious activity.
+- Introduce unapproved third-party integrations, extensions, or APIs.
+- Store, process, or transmit unencrypted PII, PHI, PCI, or sensitive company data outside approved company cloud environments.
 
 
 ### Acceptable use of end-user computing
